@@ -23,4 +23,22 @@
 
     <!-- 启动图标背景 -->
     <color name="ic_launcher_background">#4E7CF6</color>
+
+    <!-- 胶囊配色（浅色背景 / 同色系深色文字，成对使用） -->
+    <color name="capsule_blue_bg">#E7EFFD</color>
+    <color name="capsule_blue_text">#3566E0</color>
+    <color name="capsule_green_bg">#E3F5EA</color>
+    <color name="capsule_green_text">#1E9C5F</color>
+    <color name="capsule_orange_bg">#FFF1E0</color>
+    <color name="capsule_orange_text">#E5750E</color>
+    <color name="capsule_purple_bg">#EFE8FC</color>
+    <color name="capsule_purple_text">#7B4FD6</color>
+    <color name="capsule_pink_bg">#FFE9F1</color>
+    <color name="capsule_pink_text">#DA4B87</color>
+    <color name="capsule_teal_bg">#DFF4F2</color>
+    <color name="capsule_teal_text">#0E9C95</color>
+    <color name="capsule_red_bg">#FDECEA</color>
+    <color name="capsule_red_text">#C8443A</color>
+    <color name="capsule_indigo_bg">#E9E8FB</color>
+    <color name="capsule_indigo_text">#5A56CE</color>
 </resources>

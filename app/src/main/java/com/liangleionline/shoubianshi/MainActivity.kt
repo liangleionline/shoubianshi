@@ -2,6 +2,7 @@ package com.liangleionline.shoubianshi
 
 import android.content.Intent
 import android.graphics.Rect
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.MotionEvent
 import android.view.View
@@ -9,6 +10,7 @@ import android.view.ViewConfiguration
 import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -29,6 +31,18 @@ class MainActivity : AppCompatActivity() {
     private var dragId = 0L
     private var dragFromNow = false
 
+    /** 胶囊配色（浅色背景 / 同色系深色文字），按事项 id 稳定分配 */
+    private val capsulePalette = listOf(
+        R.color.capsule_blue_bg to R.color.capsule_blue_text,
+        R.color.capsule_green_bg to R.color.capsule_green_text,
+        R.color.capsule_orange_bg to R.color.capsule_orange_text,
+        R.color.capsule_purple_bg to R.color.capsule_purple_text,
+        R.color.capsule_pink_bg to R.color.capsule_pink_text,
+        R.color.capsule_teal_bg to R.color.capsule_teal_text,
+        R.color.capsule_red_bg to R.color.capsule_red_text,
+        R.color.capsule_indigo_bg to R.color.capsule_indigo_text,
+    )
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -48,6 +62,15 @@ class MainActivity : AppCompatActivity() {
             val tag = layoutInflater.inflate(R.layout.item_task, flow, false) as TextView
             tag.text = task.title
             tag.isClickable = true
+            // 上色：浅色胶囊底 + 同色系深色文字
+            val (bgRes, textRes) = capsulePalette[(task.id % capsulePalette.size).toInt()]
+            tag.setTextColor(ContextCompat.getColor(this, textRes))
+            val radius = resources.getDimension(R.dimen.tag_corner)
+            tag.background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = radius
+                setColor(ContextCompat.getColor(this@MainActivity, bgRes))
+            }
             tag.setOnTouchListener { v, e -> onTagTouch(v, e, task.id, fromNow) }
             flow.addView(tag)
         }
@@ -103,7 +126,10 @@ class MainActivity : AppCompatActivity() {
         dragSource = v
 
         val ghost = layoutInflater.inflate(R.layout.item_task, binding.root, false) as TextView
-        ghost.text = (v as TextView).text
+        val src = v as TextView
+        ghost.text = src.text
+        ghost.background = src.background
+        ghost.setTextColor(src.currentTextColor)
         ghost.alpha = 0.92f
         ghost.elevation = 12f
         ghost.isClickable = false
