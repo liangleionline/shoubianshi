@@ -42,6 +42,7 @@ class MainActivity : AppCompatActivity() {
         for (task in tasks) {
             val tag = layoutInflater.inflate(R.layout.item_task, flow, false) as TextView
             tag.text = task.title
+            tag.isClickable = true
             tag.setOnTouchListener { v, e -> onTagTouch(v, e, task.id, fromNow) }
             flow.addView(tag)
         }
@@ -53,14 +54,16 @@ class MainActivity : AppCompatActivity() {
     private fun onTagTouch(v: View, e: MotionEvent, id: Long, fromNow: Boolean): Boolean {
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                // 认领手势，保证后续 MOVE 稳定到达、不被父容器拦截
+                v.parent?.requestDisallowInterceptTouchEvent(true)
                 v.setTag(R.id.drag_state, 0)
                 v.setTag(R.id.drag_down, Pair(e.rawX, e.rawY))
-                return false
+                return true
             }
 
             MotionEvent.ACTION_MOVE -> {
                 if (v.getTag(R.id.drag_state) as? Int == 1) return true
-                val down = v.getTag(R.id.drag_down) as? Pair<*, *> ?: return false
+                val down = v.getTag(R.id.drag_down) as? Pair<*, *> ?: return true
                 val slop = ViewConfiguration.get(this).scaledTouchSlop
                 val moved =
                     abs(e.rawX - (down.first as Float)) > slop ||
@@ -68,15 +71,14 @@ class MainActivity : AppCompatActivity() {
                 if (moved) {
                     v.setTag(R.id.drag_state, 1)
                     startDrag(v, id, fromNow)
-                    return true
                 }
-                return false
+                return true
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
                 v.setTag(R.id.drag_state, 0)
         }
-        return false
+        return true
     }
 
     private fun startDrag(v: View, id: Long, fromNow: Boolean) {
