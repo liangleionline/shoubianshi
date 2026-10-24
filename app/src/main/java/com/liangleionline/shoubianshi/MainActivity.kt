@@ -1,9 +1,8 @@
 package com.liangleionline.shoubianshi
 
-import android.content.ClipData
 import android.content.Intent
+import android.graphics.Rect
 import android.os.Bundle
-import android.view.DragEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
@@ -23,6 +22,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val vm: MainViewModel by viewModels()
 
+    // ---------------- 手写拖拽状态 ----------------
+    private var dragging = false
+    private var dragGhost: TextView? = null
+    private var dragSource: View? = null
+    private var dragId = 0L
+    private var dragFromNow = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -31,7 +37,6 @@ class MainActivity : AppCompatActivity() {
         binding.btnManage.setOnClickListener {
             startActivity(Intent(this, ManageActivity::class.java))
         }
-        setupDropTargets()
         observe()
     }
 
@@ -49,94 +54,135 @@ class MainActivity : AppCompatActivity() {
         empty.visibility = if (tasks.isEmpty()) View.VISIBLE else View.GONE
     }
 
-    // ---------------- 直接拖拽（手指移动即启动，无需长按） ----------------
+    // ---------------- 手指直接拖拽（手写实现，不依赖系统拖拽框架） ----------------
 
     private fun onTagTouch(v: View, e: MotionEvent, id: Long, fromNow: Boolean): Boolean {
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                // 认领手势，保证后续 MOVE 稳定到达、不被父容器拦截
                 v.parent?.requestDisallowInterceptTouchEvent(true)
-                v.setTag(R.id.drag_state, 0)
                 v.setTag(R.id.drag_down, Pair(e.rawX, e.rawY))
                 return true
             }
 
             MotionEvent.ACTION_MOVE -> {
-                if (v.getTag(R.id.drag_state) as? Int == 1) return true
-                val down = v.getTag(R.id.drag_down) as? Pair<*, *> ?: return true
-                val slop = ViewConfiguration.get(this).scaledTouchSlop
-                val moved =
-                    abs(e.rawX - (down.first as Float)) > slop ||
-                        abs(e.rawY - (down.second as Float)) > slop
-                if (moved) {
-                    v.setTag(R.id.drag_state, 1)
-                    startDrag(v, id, fromNow)
+                if (!dragging) {
+                    val down = v.getTag(R.id.drag_down) as? Pair<*, *> ?: return true
+                    val slop = ViewConfiguration.get(this).scaledTouchSlop
+                    val moved =
+                        abs(e.rawX - (down.first as Float)) > slop ||
+                            abs(e.rawY - (down.second as Float)) > slop
+                    if (moved) beginDrag(v, id, fromNow)
+                }
+                if (dragging) {
+                    moveGhost(e.rawX, e.rawY)
+                    highlightTarget(e.rawX, e.rawY)
                 }
                 return true
             }
 
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
-                v.setTag(R.id.drag_state, 0)
+            MotionEvent.ACTION_UP -> {
+                if (dragging) endDrag(e.rawX, e.rawY)
+                dragging = false
+                return true
+            }
+
+            MotionEvent.ACTION_CANCEL -> {
+                if (dragging) cancelDrag()
+                dragging = false
+                return true
+            }
         }
         return true
     }
 
-    private fun startDrag(v: View, id: Long, fromNow: Boolean) {
-        val clip = ClipData.newPlainText("task_id", id.toString())
-        val shadow = View.DragShadowBuilder(v)
-        // localState 携带源区信息：true=来自上区(待办)，false=来自下区(素材库)
-        v.startDragAndDrop(clip, shadow, fromNow, 0)
+    /** 手指移动超过阈值：生成悬浮幽灵胶囊，原标签隐藏 */
+    private fun beginDrag(v: View, id: Long, fromNow: Boolean) {
+        dragging = true
+        dragId = id
+        dragFromNow = fromNow
+        dragSource = v
+
+        val ghost = layoutInflater.inflate(R.layout.item_task, binding.root, false) as TextView
+        ghost.text = (v as TextView).text
+        ghost.alpha = 0.92f
+        ghost.elevation = 12f
+        ghost.isClickable = false
+        binding.root.addView(ghost)
+        dragGhost = ghost
+
+        v.visibility = View.INVISIBLE
+        // 幽灵先定位在源标签当前位置
+        val srcPos = IntArray(2)
+        v.getLocationOnScreen(srcPos)
+        positionGhost(ghost, srcPos[0] + v.width / 2f, srcPos[1] + v.height / 2f)
+        showDropZone(fromNow)
     }
 
-    // ---------------- 拖放目标：上区 / 下区 / 完成区 ----------------
-
-    private fun setupDropTargets() {
-        binding.zoneNow.setOnDragListener { _, e -> onDrag(e, targetZone = "now") }
-        binding.zonePool.setOnDragListener { _, e -> onDrag(e, targetZone = "pool") }
-        binding.dropZone.setOnDragListener { _, e -> onDrag(e, targetZone = "drop") }
+    /** 幽灵跟随手指（rawX/rawY 为屏幕坐标，换算到根布局坐标） */
+    private fun positionGhost(ghost: TextView, rawX: Float, rawY: Float) {
+        val offset = IntArray(2)
+        binding.root.getLocationOnScreen(offset)
+        ghost.x = rawX - offset[0] - ghost.width / 2f
+        ghost.y = rawY - offset[1] - ghost.height / 2f
     }
 
-    private fun onDrag(event: DragEvent, targetZone: String): Boolean {
-        val fromNow = event.localState as? Boolean ?: false
-        return when (event.action) {
-            DragEvent.ACTION_DRAG_STARTED -> {
-                // 仅从上区拖出时才在底部浮现完成区
-                showDropZone(fromNow)
-                true
-            }
+    private fun moveGhost(rawX: Float, rawY: Float) {
+        dragGhost?.let { positionGhost(it, rawX, rawY) }
+    }
 
-            DragEvent.ACTION_DRAG_ENTERED -> {
-                if (targetZone == "drop") binding.dropZone.alpha = 0.6f
-                true
-            }
+    /** 松手：按落点判定进入哪个区域并执行 */
+    private fun endDrag(rawX: Float, rawY: Float) {
+        when (findTarget(rawX, rawY)) {
+            "now" -> if (!dragFromNow) vm.moveToNow(dragId)
+            "pool" -> if (dragFromNow) vm.moveToPool(dragId)
+            "drop" -> if (dragFromNow) vm.deleteById(dragId)
+        }
+        cleanupDrag()
+    }
 
-            DragEvent.ACTION_DRAG_EXITED -> {
-                if (targetZone == "drop") binding.dropZone.alpha = 1f
-                true
-            }
+    private fun cancelDrag() = cleanupDrag()
 
-            DragEvent.ACTION_DROP -> {
-                binding.dropZone.alpha = 1f
-                event.clipData?.getItemAt(0)?.text?.toString()?.toLongOrNull()?.let { id ->
-                    when (targetZone) {
-                        "now" -> if (!fromNow) vm.moveToNow(id)
-                        "pool" -> if (fromNow) vm.moveToPool(id)
-                        "drop" -> if (fromNow) vm.deleteById(id)
-                    }
-                }
-                true
-            }
+    private fun cleanupDrag() {
+        hideDropZone()
+        resetHighlight()
+        dragSource?.visibility = View.VISIBLE
+        dragGhost?.let { binding.root.removeView(it) }
+        dragGhost = null
+        dragSource = null
+        dragging = false
+    }
 
-            DragEvent.ACTION_DRAG_ENDED -> {
-                hideDropZone()
-                true
-            }
+    /** 落点区域：上区 / 下区 / 完成区 */
+    private fun findTarget(rawX: Float, rawY: Float): String? = when {
+        contains(binding.zoneNow, rawX, rawY) -> "now"
+        contains(binding.zonePool, rawX, rawY) -> "pool"
+        binding.dropZone.visibility == View.VISIBLE &&
+            contains(binding.dropZone, rawX, rawY) -> "drop"
+        else -> null
+    }
 
-            else -> true
+    private fun contains(view: View, rawX: Float, rawY: Float): Boolean {
+        val rect = Rect()
+        view.getGlobalVisibleRect(rect)
+        return rect.contains(rawX.toInt(), rawY.toInt())
+    }
+
+    /** 拖拽悬停高亮 */
+    private fun highlightTarget(rawX: Float, rawY: Float) {
+        binding.zoneNow.alpha = if (contains(binding.zoneNow, rawX, rawY)) 0.86f else 1f
+        binding.zonePool.alpha = if (contains(binding.zonePool, rawX, rawY)) 0.86f else 1f
+        if (binding.dropZone.visibility == View.VISIBLE) {
+            binding.dropZone.alpha = if (contains(binding.dropZone, rawX, rawY)) 0.6f else 1f
         }
     }
 
-    // ---------------- 完成区显隐与动效 ----------------
+    private fun resetHighlight() {
+        binding.zoneNow.alpha = 1f
+        binding.zonePool.alpha = 1f
+        binding.dropZone.alpha = 1f
+    }
+
+    // ---------------- 完成区显隐（仅从上区拖出时浮现） ----------------
 
     private fun showDropZone(show: Boolean) {
         val dz = binding.dropZone
