@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 清单圆角块 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M40,30 h28 a6,6 0 0 1 6,6 v36 a6,6 0 0 1 -6,6 h-28 a6,6 0 0 1 -6,-6 v-36 a6,6 0 0 1 6,-6 z" />
+    <!-- 三行项目线 -->
+    <path
+        android:strokeColor="#4E7CF6"
+        android:strokeWidth="3.4"
+        android:strokeLineCap="round"
+        android:pathData="M46,44 h14 M46,54 h16 M46,64 h11" />
+    <!-- 完成对勾 -->
+    <path
+        android:strokeColor="#2FB56C"
+        android:strokeWidth="3.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M63,40 l-8,9 l-4,-4" />
+</vector>

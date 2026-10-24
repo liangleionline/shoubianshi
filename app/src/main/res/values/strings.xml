@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">手边事</string>
+
+    <!-- 首页 -->
+    <string name="zone_now_title">接下来待办</string>
+    <string name="zone_pool_title">全部事项</string>
+    <string name="zone_now_empty">还没有安排，把下面的事项拖上来吧</string>
+    <string name="zone_pool_empty">事项库是空的，去添加一些事项</string>
+    <string name="action_complete">完成</string>
+    <string name="action_manage">管理</string>
+
+    <!-- 管理页 -->
+    <string name="manage_title">事项管理</string>
+    <string name="hint_input">输入事项，如：刷牙、洗脸、上班</string>
+    <string name="action_add">添加</string>
+    <string name="action_edit">编辑</string>
+    <string name="action_delete">删除</string>
+    <string name="edit_dialog_title">修改事项</string>
+    <string name="edit_dialog_hint">请输入事项内容</string>
+    <string name="action_save">保存</string>
+    <string name="action_cancel">取消</string>
+    <string name="manage_empty">还没有任何事项，先在上方添加吧</string>
+    <string name="state_now">待办中</string>
+    <string name="state_pool">素材库</string>
+</resources>
