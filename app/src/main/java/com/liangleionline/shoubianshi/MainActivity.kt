@@ -1,121 +1,172 @@
 package com.liangleionline.shoubianshi
 
+import android.content.ClipData
 import android.content.Intent
 import android.os.Bundle
 import android.view.DragEvent
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
+import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import com.liangleionline.shoubianshi.data.Task
 import com.liangleionline.shoubianshi.databinding.ActivityMainBinding
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val vm: MainViewModel by viewModels()
 
-    private lateinit var nowAdapter: TaskAdapter
-    private lateinit var poolAdapter: TaskAdapter
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setupLists()
+        binding.btnManage.setOnClickListener {
+            startActivity(Intent(this, ManageActivity::class.java))
+        }
         setupDropTargets()
         observe()
     }
 
-    private fun setupLists() {
-        nowAdapter = TaskAdapter(
-            isNowZone = true,
-            onDragStart = ::startDrag,
-            onComplete = vm::delete
-        )
-        poolAdapter = TaskAdapter(
-            isNowZone = false,
-            onDragStart = ::startDrag,
-            onComplete = vm::delete
-        )
+    // ---------------- 标签填充（椭圆小图标，多行排布） ----------------
 
-        binding.nowRv.layoutManager = LinearLayoutManager(this)
-        binding.nowRv.adapter = nowAdapter
-        binding.poolRv.layoutManager = LinearLayoutManager(this)
-        binding.poolRv.adapter = poolAdapter
-
-        binding.btnManage.setOnClickListener {
-            startActivity(Intent(this, ManageActivity::class.java))
+    private fun fillZone(flow: FlowLayout, empty: View, tasks: List<Task>, fromNow: Boolean) {
+        flow.removeAllViews()
+        for (task in tasks) {
+            val tag = layoutInflater.inflate(R.layout.item_task, flow, false) as TextView
+            tag.text = task.title
+            tag.setOnTouchListener { v, e -> onTagTouch(v, e, task.id, fromNow) }
+            flow.addView(tag)
         }
+        empty.visibility = if (tasks.isEmpty()) View.VISIBLE else View.GONE
     }
 
-    /** 长按卡片启动拖拽，卡片跟随悬浮 */
-    private fun startDrag(holder: RecyclerView.ViewHolder, task: Task) {
-        val data = android.content.ClipData.newPlainText("task_id", task.id.toString())
-        val shadow = View.DragShadowBuilder(holder.itemView)
-        holder.itemView.startDragAndDrop(data, shadow, null, 0)
+    // ---------------- 直接拖拽（手指移动即启动，无需长按） ----------------
+
+    private fun onTagTouch(v: View, e: MotionEvent, id: Long, fromNow: Boolean): Boolean {
+        when (e.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                v.setTag(R.id.drag_state, 0)
+                v.setTag(R.id.drag_down, Pair(e.rawX, e.rawY))
+                return false
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                if (v.getTag(R.id.drag_state) as? Int == 1) return true
+                val down = v.getTag(R.id.drag_down) as? Pair<*, *> ?: return false
+                val slop = ViewConfiguration.get(this).scaledTouchSlop
+                val moved =
+                    abs(e.rawX - (down.first as Float)) > slop ||
+                        abs(e.rawY - (down.second as Float)) > slop
+                if (moved) {
+                    v.setTag(R.id.drag_state, 1)
+                    startDrag(v, id, fromNow)
+                    return true
+                }
+                return false
+            }
+
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                v.setTag(R.id.drag_state, 0)
+        }
+        return false
     }
 
-    /** 两个区域都作为拖放目标：上区=加入待办，下区=撤回素材库 */
+    private fun startDrag(v: View, id: Long, fromNow: Boolean) {
+        val clip = ClipData.newPlainText("task_id", id.toString())
+        val shadow = View.DragShadowBuilder(v)
+        // localState 携带源区信息：true=来自上区(待办)，false=来自下区(素材库)
+        v.startDragAndDrop(clip, shadow, fromNow, 0)
+    }
+
+    // ---------------- 拖放目标：上区 / 下区 / 完成区 ----------------
+
     private fun setupDropTargets() {
-        binding.zoneNow.setOnDragListener { _, e -> onZoneDrag(binding.zoneNow, e, targetNow = true) }
-        binding.zonePool.setOnDragListener { _, e -> onZoneDrag(binding.zonePool, e, targetNow = false) }
+        binding.zoneNow.setOnDragListener { _, e -> onDrag(e, targetZone = "now") }
+        binding.zonePool.setOnDragListener { _, e -> onDrag(e, targetZone = "pool") }
+        binding.dropZone.setOnDragListener { _, e -> onDrag(e, targetZone = "drop") }
     }
 
-    private fun onZoneDrag(zone: View, event: DragEvent, targetNow: Boolean): Boolean {
+    private fun onDrag(event: DragEvent, targetZone: String): Boolean {
+        val fromNow = event.localState as? Boolean ?: false
         return when (event.action) {
-            DragEvent.ACTION_DRAG_STARTED -> true
+            DragEvent.ACTION_DRAG_STARTED -> {
+                // 仅从上区拖出时才在底部浮现完成区
+                showDropZone(fromNow)
+                true
+            }
 
             DragEvent.ACTION_DRAG_ENTERED -> {
-                setZoneHighlight(zone, true); true
+                if (targetZone == "drop") binding.dropZone.alpha = 0.6f
+                true
             }
 
             DragEvent.ACTION_DRAG_EXITED -> {
-                setZoneHighlight(zone, false); true
+                if (targetZone == "drop") binding.dropZone.alpha = 1f
+                true
             }
 
             DragEvent.ACTION_DROP -> {
-                setZoneHighlight(zone, false)
+                binding.dropZone.alpha = 1f
                 event.clipData?.getItemAt(0)?.text?.toString()?.toLongOrNull()?.let { id ->
-                    if (targetNow) vm.moveToNow(id) else vm.moveToPool(id)
+                    when (targetZone) {
+                        "now" -> if (!fromNow) vm.moveToNow(id)
+                        "pool" -> if (fromNow) vm.moveToPool(id)
+                        "drop" -> if (fromNow) vm.deleteById(id)
+                    }
                 }
                 true
             }
 
             DragEvent.ACTION_DRAG_ENDED -> {
-                setZoneHighlight(zone, false); true
+                hideDropZone()
+                true
             }
 
-            else -> false
+            else -> true
         }
     }
 
-    /** 拖拽悬停高亮 */
-    private fun setZoneHighlight(zone: View, on: Boolean) {
-        zone.alpha = if (on) 0.88f else 1f
+    // ---------------- 完成区显隐与动效 ----------------
+
+    private fun showDropZone(show: Boolean) {
+        val dz = binding.dropZone
+        if (show && dz.visibility != View.VISIBLE) {
+            dz.visibility = View.VISIBLE
+            dz.alpha = 0f
+            dz.animate().alpha(1f).setDuration(150).start()
+        } else if (!show) {
+            hideDropZone()
+        }
     }
+
+    private fun hideDropZone() {
+        val dz = binding.dropZone
+        dz.animate().cancel()
+        dz.visibility = View.GONE
+        dz.alpha = 1f
+    }
+
+    // ---------------- 数据观察 ----------------
 
     private fun observe() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     vm.nowTasks.collect { list ->
-                        nowAdapter.submit(list)
-                        binding.nowEmpty.visibility =
-                            if (list.isEmpty()) View.VISIBLE else View.GONE
+                        fillZone(binding.nowFlow, binding.nowEmpty, list, fromNow = true)
                     }
                 }
                 launch {
                     vm.poolTasks.collect { list ->
-                        poolAdapter.submit(list)
-                        binding.poolEmpty.visibility =
-                            if (list.isEmpty()) View.VISIBLE else View.GONE
+                        fillZone(binding.poolFlow, binding.poolEmpty, list, fromNow = false)
                     }
                 }
             }

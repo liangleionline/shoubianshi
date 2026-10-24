@@ -7,7 +7,8 @@
     <string name="zone_pool_title">全部事项</string>
     <string name="zone_now_empty">还没有安排，把下面的事项拖上来吧</string>
     <string name="zone_pool_empty">事项库是空的，去添加一些事项</string>
-    <string name="action_complete">完成</string>
+    <string name="drop_hint">拖到这里完成</string>
+    <string name="drag_tip">按住标签上下拖动即可安排</string>
     <string name="action_manage">管理</string>
 
     <!-- 管理页 -->

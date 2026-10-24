@@ -46,4 +46,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun delete(task: Task) = viewModelScope.launch(Dispatchers.IO) {
         dao.delete(task)
     }
+
+    /** 拖入完成区：按 id 完成并删除 */
+    fun deleteById(id: Long) = viewModelScope.launch(Dispatchers.IO) {
+        dao.deleteById(id)
+    }
 }
