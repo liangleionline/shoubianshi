@@ -10,3 +10,4 @@
 *.keystore
 !debug.keystore
 app/build/
+*.apk
