@@ -110,7 +110,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             MotionEvent.ACTION_UP -> {
-                if (dragging) endDrag(e.rawX, e.rawY)
+                if (dragging) endDrag(e.rawX, e.rawY) else onTagTap(v, id, fromNow)
                 dragging = false
                 return true
             }
@@ -152,7 +152,6 @@ class MainActivity : AppCompatActivity() {
         val srcPos = IntArray(2)
         v.getLocationOnScreen(srcPos)
         positionGhost(ghost, srcPos[0] + v.width / 2f, srcPos[1] + v.height / 2f)
-        showDropZone(fromNow)
     }
 
     /** 幽灵跟随手指（rawX/rawY 为屏幕坐标，换算到根布局坐标） */
@@ -172,7 +171,6 @@ class MainActivity : AppCompatActivity() {
         when (findTarget(rawX, rawY)) {
             "now" -> if (!dragFromNow) vm.moveToNow(dragId)
             "pool" -> if (dragFromNow) vm.moveToPool(dragId)
-            "drop" -> if (dragFromNow) vm.deleteById(dragId)
         }
         cleanupDrag()
     }
@@ -180,7 +178,6 @@ class MainActivity : AppCompatActivity() {
     private fun cancelDrag() = cleanupDrag()
 
     private fun cleanupDrag() {
-        hideDropZone()
         resetHighlight()
         dragSource?.visibility = View.VISIBLE
         dragGhost?.let { binding.root.removeView(it) }
@@ -189,12 +186,10 @@ class MainActivity : AppCompatActivity() {
         dragging = false
     }
 
-    /** 落点区域：上区 / 下区 / 完成区 */
+    /** 落点区域：上区 / 下区 */
     private fun findTarget(rawX: Float, rawY: Float): String? = when {
         contains(binding.zoneNow, rawX, rawY) -> "now"
         contains(binding.zonePool, rawX, rawY) -> "pool"
-        binding.dropZone.visibility == View.VISIBLE &&
-            contains(binding.dropZone, rawX, rawY) -> "drop"
         else -> null
     }
 
@@ -208,35 +203,40 @@ class MainActivity : AppCompatActivity() {
     private fun highlightTarget(rawX: Float, rawY: Float) {
         binding.zoneNow.alpha = if (contains(binding.zoneNow, rawX, rawY)) 0.86f else 1f
         binding.zonePool.alpha = if (contains(binding.zonePool, rawX, rawY)) 0.86f else 1f
-        if (binding.dropZone.visibility == View.VISIBLE) {
-            binding.dropZone.alpha = if (contains(binding.dropZone, rawX, rawY)) 0.6f else 1f
-        }
     }
 
     private fun resetHighlight() {
         binding.zoneNow.alpha = 1f
         binding.zonePool.alpha = 1f
-        binding.dropZone.alpha = 1f
     }
 
-    // ---------------- 完成区显隐（仅从上区拖出时浮现） ----------------
+    // ---------------- 单击：胶囊飞向目标区域 ----------------
 
-    private fun showDropZone(show: Boolean) {
-        val dz = binding.dropZone
-        if (show && dz.visibility != View.VISIBLE) {
-            dz.visibility = View.VISIBLE
-            dz.alpha = 0f
-            dz.animate().alpha(1f).setDuration(150).start()
-        } else if (!show) {
-            hideDropZone()
-        }
-    }
-
-    private fun hideDropZone() {
-        val dz = binding.dropZone
-        dz.animate().cancel()
-        dz.visibility = View.GONE
-        dz.alpha = 1f
+    private fun onTagTap(v: View, id: Long, fromNow: Boolean) {
+        val target = if (fromNow) binding.zonePool else binding.zoneNow
+        val srcPos = IntArray(2)
+        v.getLocationOnScreen(srcPos)
+        val targetPos = IntArray(2)
+        target.getLocationOnScreen(targetPos)
+        val dx = (targetPos[0] + target.width / 2f) - (srcPos[0] + v.width / 2f)
+        val dy = (targetPos[1] + target.height / 2f) - (srcPos[1] + v.height / 2f)
+        v.animate()
+            .translationXBy(dx)
+            .translationYBy(dy)
+            .scaleX(0.55f)
+            .scaleY(0.55f)
+            .alpha(0.2f)
+            .setDuration(280)
+            .withEndAction {
+                v.animate().cancel()
+                v.translationX = 0f
+                v.translationY = 0f
+                v.scaleX = 1f
+                v.scaleY = 1f
+                v.alpha = 1f
+                if (fromNow) vm.moveToPool(id) else vm.moveToNow(id)
+            }
+            .start()
     }
 
     // ---------------- 数据观察 ----------------

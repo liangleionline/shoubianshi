@@ -126,22 +126,4 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- 完成区：仅从上区拖出时在底部浮现（拖放目标） -->
-    <TextView
-        android:id="@+id/dropZone"
-        android:layout_width="wrap_content"
-        android:layout_height="60dp"
-        android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginBottom="28dp"
-        android:background="@drawable/bg_dropzone"
-        android:elevation="6dp"
-        android:gravity="center"
-        android:paddingStart="40dp"
-        android:paddingEnd="40dp"
-        android:text="@string/drop_hint"
-        android:textColor="@color/on_primary"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:visibility="gone" />
-
 </FrameLayout>
