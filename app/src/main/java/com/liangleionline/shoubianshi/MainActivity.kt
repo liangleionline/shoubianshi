@@ -134,10 +134,15 @@ class MainActivity : AppCompatActivity() {
         ghost.elevation = 12f
         ghost.isClickable = false
         binding.root.addView(ghost)
+
+        // 同步测量布局，确保 width/height 立即可用，避免首帧用 0 尺寸定位导致瞬移闪烁
+        val spec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        ghost.measure(spec, spec)
+        ghost.layout(0, 0, ghost.measuredWidth, ghost.measuredHeight)
         dragGhost = ghost
 
         v.visibility = View.INVISIBLE
-        // 幽灵先定位在源标签当前位置
+        // 幽灵定位到与源胶囊完全重合，做到无缝衔接
         val srcPos = IntArray(2)
         v.getLocationOnScreen(srcPos)
         positionGhost(ghost, srcPos[0] + v.width / 2f, srcPos[1] + v.height / 2f)
