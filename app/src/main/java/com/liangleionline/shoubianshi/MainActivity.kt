@@ -214,13 +214,38 @@ class MainActivity : AppCompatActivity() {
 
     private fun onTagTap(v: View, id: Long, fromNow: Boolean) {
         val target = if (fromNow) binding.zonePool else binding.zoneNow
+
+        // 用根浮层上的幽灵副本飞行，避免被区域边界裁剪导致闪烁
+        val ghost = layoutInflater.inflate(R.layout.item_task, binding.root, false) as TextView
+        val src = v as TextView
+        ghost.text = src.text
+        ghost.background = src.background
+        ghost.setTextColor(src.currentTextColor)
+        ghost.alpha = 1f
+        ghost.elevation = 12f
+        ghost.isClickable = false
+        val spec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        ghost.measure(spec, spec)
+        ghost.layout(0, 0, ghost.measuredWidth, ghost.measuredHeight)
+        binding.root.addView(ghost)
+
         val srcPos = IntArray(2)
         v.getLocationOnScreen(srcPos)
         val targetPos = IntArray(2)
         target.getLocationOnScreen(targetPos)
+        val rootOffset = IntArray(2)
+        binding.root.getLocationOnScreen(rootOffset)
+
+        // 幽灵起点与源胶囊完全重合
+        ghost.x = (srcPos[0] - rootOffset[0]).toFloat()
+        ghost.y = (srcPos[1] - rootOffset[1]).toFloat()
+
         val dx = (targetPos[0] + target.width / 2f) - (srcPos[0] + v.width / 2f)
         val dy = (targetPos[1] + target.height / 2f) - (srcPos[1] + v.height / 2f)
-        v.animate()
+
+        v.visibility = View.INVISIBLE
+
+        ghost.animate()
             .translationXBy(dx)
             .translationYBy(dy)
             .scaleX(0.55f)
@@ -228,12 +253,7 @@ class MainActivity : AppCompatActivity() {
             .alpha(0.2f)
             .setDuration(280)
             .withEndAction {
-                v.animate().cancel()
-                v.translationX = 0f
-                v.translationY = 0f
-                v.scaleX = 1f
-                v.scaleY = 1f
-                v.alpha = 1f
+                binding.root.removeView(ghost)
                 if (fromNow) vm.moveToPool(id) else vm.moveToNow(id)
             }
             .start()
