@@ -32,6 +32,12 @@ class MainActivity : AppCompatActivity() {
     private var dragId = 0L
     private var dragFromNow = false
 
+    // ---------------- 单击飞行状态 ----------------
+    private var flySrcX = 0f
+    private var flySrcY = 0f
+    private var flyGhost: TextView? = null
+    private var flyTargetId = 0L
+
     /** 胶囊配色（浅色背景 / 同色系深色文字），按事项 id 稳定分配 */
     private val capsulePalette = listOf(
         R.color.capsule_blue_bg to R.color.capsule_blue_text,
@@ -79,6 +85,11 @@ class MainActivity : AppCompatActivity() {
             lp.bottomMargin = (8 * density).toInt()
             tag.setOnTouchListener { v, e -> onTagTouch(v, e, task.id, fromNow) }
             flow.addView(tag)
+            // 若是单击飞行移动过来的胶囊：先隐藏真实胶囊，让幽灵飞向它的真实落点，到达后再显示
+            if (task.id == flyTargetId && flyTargetId != 0L) {
+                tag.visibility = View.INVISIBLE
+                startFlyTo(tag)
+            }
         }
         empty.visibility = if (tasks.isEmpty()) View.VISIBLE else View.GONE
     }
@@ -213,9 +224,14 @@ class MainActivity : AppCompatActivity() {
     // ---------------- 单击：胶囊飞向目标区域 ----------------
 
     private fun onTagTap(v: View, id: Long, fromNow: Boolean) {
-        val target = if (fromNow) binding.zonePool else binding.zoneNow
+        // 记录源胶囊中心（屏幕坐标）
+        val srcPos = IntArray(2)
+        v.getLocationOnScreen(srcPos)
+        flySrcX = srcPos[0] + v.width / 2f
+        flySrcY = srcPos[1] + v.height / 2f
+        flyTargetId = id
 
-        // 用根浮层上的幽灵副本飞行，避免被区域边界裁剪导致闪烁
+        // 幽灵覆盖源胶囊作为起点，源胶囊隐藏
         val ghost = layoutInflater.inflate(R.layout.item_task, binding.root, false) as TextView
         val src = v as TextView
         ghost.text = src.text
@@ -227,36 +243,42 @@ class MainActivity : AppCompatActivity() {
         val spec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
         ghost.measure(spec, spec)
         ghost.layout(0, 0, ghost.measuredWidth, ghost.measuredHeight)
-        binding.root.addView(ghost)
-
-        val srcPos = IntArray(2)
-        v.getLocationOnScreen(srcPos)
-        val targetPos = IntArray(2)
-        target.getLocationOnScreen(targetPos)
         val rootOffset = IntArray(2)
         binding.root.getLocationOnScreen(rootOffset)
-
-        // 幽灵起点与源胶囊完全重合
         ghost.x = (srcPos[0] - rootOffset[0]).toFloat()
         ghost.y = (srcPos[1] - rootOffset[1]).toFloat()
-
-        val dx = (targetPos[0] + target.width / 2f) - (srcPos[0] + v.width / 2f)
-        val dy = (targetPos[1] + target.height / 2f) - (srcPos[1] + v.height / 2f)
+        binding.root.addView(ghost)
+        flyGhost = ghost
 
         v.visibility = View.INVISIBLE
 
-        ghost.animate()
-            .translationXBy(dx)
-            .translationYBy(dy)
-            .scaleX(0.55f)
-            .scaleY(0.55f)
-            .alpha(0.2f)
-            .setDuration(280)
-            .withEndAction {
-                binding.root.removeView(ghost)
-                if (fromNow) vm.moveToPool(id) else vm.moveToNow(id)
-            }
-            .start()
+        // 先移动数据，触发目标区重渲染；fillZone 会在渲染出该胶囊后接管飞行终点
+        if (fromNow) vm.moveToPool(id) else vm.moveToNow(id)
+    }
+
+    /** 目标区渲染出飞行胶囊后：等布局完成拿到真实落点，驱动幽灵从源位置直接飞过去 */
+    private fun startFlyTo(tag: View) {
+        val ghost = flyGhost ?: return
+        tag.post {
+            val pos = IntArray(2)
+            tag.getLocationOnScreen(pos)
+            val tx = pos[0] + tag.width / 2f - flySrcX
+            val ty = pos[1] + tag.height / 2f - flySrcY
+            ghost.animate()
+                .translationXBy(tx)
+                .translationYBy(ty)
+                .scaleX(0.55f)
+                .scaleY(0.55f)
+                .alpha(0.2f)
+                .setDuration(280)
+                .withEndAction {
+                    binding.root.removeView(ghost)
+                    flyGhost = null
+                    flyTargetId = 0L
+                    tag.visibility = View.VISIBLE
+                }
+                .start()
+        }
     }
 
     // ---------------- 数据观察 ----------------
