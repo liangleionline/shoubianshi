@@ -31,6 +31,10 @@ interface TaskDao {
     @Query("UPDATE tasks SET isPinned = :pinned WHERE id = :id")
     suspend fun setPinned(id: Long, pinned: Boolean)
 
+    /** 移动到目标区时同时刷新排序时间，使该胶囊排到末尾 */
+    @Query("UPDATE tasks SET isPinned = :pinned, createdAt = :now WHERE id = :id")
+    suspend fun setPinnedAt(id: Long, pinned: Boolean, now: Long)
+
     @Delete
     suspend fun delete(task: Task)
 
