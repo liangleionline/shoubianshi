@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.view.ViewGroup
 import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -71,6 +72,11 @@ class MainActivity : AppCompatActivity() {
                 cornerRadius = radius
                 setColor(ContextCompat.getColor(this@MainActivity, bgRes))
             }
+            // 胶囊之间留出水平与垂直间距
+            val density = resources.displayMetrics.density
+            val lp = tag.layoutParams as ViewGroup.MarginLayoutParams
+            lp.rightMargin = (8 * density).toInt()
+            lp.bottomMargin = (8 * density).toInt()
             tag.setOnTouchListener { v, e -> onTagTouch(v, e, task.id, fromNow) }
             flow.addView(tag)
         }
