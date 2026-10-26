@@ -258,16 +258,23 @@ class MainActivity : AppCompatActivity() {
         if (fromNow) vm.moveToPool(id) else vm.moveToNow(id)
     }
 
-    /** 目标区渲染出飞行胶囊后：等布局完成拿到真实落点，驱动幽灵从原位置直接飞过去 */
+    /** 目标区渲染出飞行胶囊后：等布局完成拿到真实落点，驱动幽灵从源位置直接飞过去 */
     private fun startFlyTo(tag: View) {
         val ghost = flyGhost ?: return
         tag.post {
+            val rootOffset = IntArray(2)
+            binding.root.getLocationOnScreen(rootOffset)
+            // 重新断言幽灵起点 = 源胶囊中心（此时根已布局完，ghost.width 为真实宽度；
+            // 防止移动数据期间素材库重排触发根布局、把位移重置/算偏，导致起点偏移）
+            ghost.translationX = flySrcX - rootOffset[0] - ghost.width / 2f
+            ghost.translationY = flySrcY - rootOffset[1] - ghost.height / 2f
+            ghost.alpha = 1f
+            ghost.scaleX = 1f
+            ghost.scaleY = 1f
             val pos = IntArray(2)
             tag.getLocationOnScreen(pos)
-            val targetCX = pos[0] + tag.width / 2f
-            val targetCY = pos[1] + tag.height / 2f
-            val dx = targetCX - flySrcX
-            val dy = targetCY - flySrcY
+            val dx = (pos[0] + tag.width / 2f) - flySrcX
+            val dy = (pos[1] + tag.height / 2f) - flySrcY
             ghost.animate()
                 .translationXBy(dx)
                 .translationYBy(dy)
