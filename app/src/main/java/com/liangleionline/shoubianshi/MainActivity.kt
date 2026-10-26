@@ -1,12 +1,9 @@
 package com.liangleionline.shoubianshi
 
 import android.content.Intent
-import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
-import android.view.MotionEvent
 import android.view.View
-import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.TextView
@@ -19,19 +16,11 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.liangleionline.shoubianshi.data.Task
 import com.liangleionline.shoubianshi.databinding.ActivityMainBinding
 import kotlinx.coroutines.launch
-import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val vm: MainViewModel by viewModels()
-
-    // ---------------- 手写拖拽状态 ----------------
-    private var dragging = false
-    private var dragGhost: TextView? = null
-    private var dragSource: View? = null
-    private var dragId = 0L
-    private var dragFromNow = false
 
     // ---------------- 单击飞行状态 ----------------
     private var flySrcX = 0f
@@ -84,7 +73,8 @@ class MainActivity : AppCompatActivity() {
             val lp = tag.layoutParams as ViewGroup.MarginLayoutParams
             lp.rightMargin = (8 * density).toInt()
             lp.bottomMargin = (8 * density).toInt()
-            tag.setOnTouchListener { v, e -> onTagTouch(v, e, task.id, fromNow) }
+            // 单击：胶囊飞向另一区域（上区 <-> 下区）
+            tag.setOnClickListener { onTagTap(it, task.id, fromNow) }
             flow.addView(tag)
             // 若是单击飞行移动过来的胶囊：先隐藏真实胶囊，让幽灵飞向它的真实落点，到达后再显示
             if (task.id == flyTargetId && flyTargetId != 0L) {
@@ -93,133 +83,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
         empty.visibility = if (tasks.isEmpty()) View.VISIBLE else View.GONE
-    }
-
-    // ---------------- 手指直接拖拽（手写实现，不依赖系统拖拽框架） ----------------
-
-    private fun onTagTouch(v: View, e: MotionEvent, id: Long, fromNow: Boolean): Boolean {
-        when (e.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                v.parent?.requestDisallowInterceptTouchEvent(true)
-                v.setTag(R.id.drag_down, Pair(e.rawX, e.rawY))
-                return true
-            }
-
-            MotionEvent.ACTION_MOVE -> {
-                if (!dragging) {
-                    val down = v.getTag(R.id.drag_down) as? Pair<*, *> ?: return true
-                    val slop = ViewConfiguration.get(this).scaledTouchSlop
-                    val moved =
-                        abs(e.rawX - (down.first as Float)) > slop ||
-                            abs(e.rawY - (down.second as Float)) > slop
-                    if (moved) beginDrag(v, id, fromNow)
-                }
-                if (dragging) {
-                    moveGhost(e.rawX, e.rawY)
-                    highlightTarget(e.rawX, e.rawY)
-                }
-                return true
-            }
-
-            MotionEvent.ACTION_UP -> {
-                if (dragging) endDrag(e.rawX, e.rawY) else onTagTap(v, id, fromNow)
-                dragging = false
-                return true
-            }
-
-            MotionEvent.ACTION_CANCEL -> {
-                if (dragging) cancelDrag()
-                dragging = false
-                return true
-            }
-        }
-        return true
-    }
-
-    /** 手指移动超过阈值：生成悬浮幽灵胶囊，原标签隐藏 */
-    private fun beginDrag(v: View, id: Long, fromNow: Boolean) {
-        dragging = true
-        dragId = id
-        dragFromNow = fromNow
-        dragSource = v
-
-        val ghost = layoutInflater.inflate(R.layout.item_task, binding.root, false) as TextView
-        val src = v as TextView
-        ghost.text = src.text
-        ghost.background = src.background
-        ghost.setTextColor(src.currentTextColor)
-        ghost.alpha = 0.92f
-        ghost.elevation = 12f
-        ghost.isClickable = false
-        binding.root.addView(ghost)
-
-        // 同步测量布局，确保 width/height 立即可用，避免首帧用 0 尺寸定位导致瞬移闪烁
-        val spec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-        ghost.measure(spec, spec)
-        ghost.layout(0, 0, ghost.measuredWidth, ghost.measuredHeight)
-        dragGhost = ghost
-
-        v.visibility = View.INVISIBLE
-        // 幽灵定位到与源胶囊完全重合，做到无缝衔接
-        val srcPos = IntArray(2)
-        v.getLocationOnScreen(srcPos)
-        positionGhost(ghost, srcPos[0] + v.width / 2f, srcPos[1] + v.height / 2f)
-    }
-
-    /** 幽灵跟随手指（rawX/rawY 为屏幕坐标，换算到根布局坐标） */
-    private fun positionGhost(ghost: TextView, rawX: Float, rawY: Float) {
-        val offset = IntArray(2)
-        binding.root.getLocationOnScreen(offset)
-        ghost.x = rawX - offset[0] - ghost.width / 2f
-        ghost.y = rawY - offset[1] - ghost.height / 2f
-    }
-
-    private fun moveGhost(rawX: Float, rawY: Float) {
-        dragGhost?.let { positionGhost(it, rawX, rawY) }
-    }
-
-    /** 松手：按落点判定进入哪个区域并执行 */
-    private fun endDrag(rawX: Float, rawY: Float) {
-        when (findTarget(rawX, rawY)) {
-            "now" -> if (!dragFromNow) vm.moveToNow(dragId)
-            "pool" -> if (dragFromNow) vm.moveToPool(dragId)
-        }
-        cleanupDrag()
-    }
-
-    private fun cancelDrag() = cleanupDrag()
-
-    private fun cleanupDrag() {
-        resetHighlight()
-        dragSource?.visibility = View.VISIBLE
-        dragGhost?.let { binding.root.removeView(it) }
-        dragGhost = null
-        dragSource = null
-        dragging = false
-    }
-
-    /** 落点区域：上区 / 下区 */
-    private fun findTarget(rawX: Float, rawY: Float): String? = when {
-        contains(binding.zoneNow, rawX, rawY) -> "now"
-        contains(binding.zonePool, rawX, rawY) -> "pool"
-        else -> null
-    }
-
-    private fun contains(view: View, rawX: Float, rawY: Float): Boolean {
-        val rect = Rect()
-        view.getGlobalVisibleRect(rect)
-        return rect.contains(rawX.toInt(), rawY.toInt())
-    }
-
-    /** 拖拽悬停高亮 */
-    private fun highlightTarget(rawX: Float, rawY: Float) {
-        binding.zoneNow.alpha = if (contains(binding.zoneNow, rawX, rawY)) 0.86f else 1f
-        binding.zonePool.alpha = if (contains(binding.zonePool, rawX, rawY)) 0.86f else 1f
-    }
-
-    private fun resetHighlight() {
-        binding.zoneNow.alpha = 1f
-        binding.zonePool.alpha = 1f
     }
 
     // ---------------- 单击：胶囊飞向目标区域 ----------------
