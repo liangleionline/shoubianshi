@@ -13,5 +13,7 @@ data class Task(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
     val isPinned: Boolean = false,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    /** 使用次数：每拖入一次「接下来待办」加 1，用于素材库按使用频率排序 */
+    val useCount: Int = 0
 )

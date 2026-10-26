@@ -34,12 +34,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** 把事项拖入上区（加入待办），并排到末尾 */
     fun moveToNow(id: Long) = viewModelScope.launch(Dispatchers.IO) {
-        dao.setPinnedAt(id, pinned = true, now = System.currentTimeMillis())
+        dao.moveToNow(id, now = System.currentTimeMillis())
     }
 
     /** 把事项拖回下区（取消待办），并排到末尾 */
     fun moveToPool(id: Long) = viewModelScope.launch(Dispatchers.IO) {
-        dao.setPinnedAt(id, pinned = false, now = System.currentTimeMillis())
+        dao.moveToPool(id, now = System.currentTimeMillis())
     }
 
     /** 完成并删除 */

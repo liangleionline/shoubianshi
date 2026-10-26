@@ -14,8 +14,8 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE isPinned = 1 ORDER BY createdAt ASC")
     fun observeNowTasks(): Flow<List<Task>>
 
-    /** 下区：全部事项素材库 */
-    @Query("SELECT * FROM tasks WHERE isPinned = 0 ORDER BY createdAt ASC")
+    /** 下区：全部事项素材库（按使用频率从高到低，再按添加先后） */
+    @Query("SELECT * FROM tasks WHERE isPinned = 0 ORDER BY useCount DESC, createdAt ASC")
     fun observePoolTasks(): Flow<List<Task>>
 
     /** 管理页：全部事项 */
@@ -31,9 +31,13 @@ interface TaskDao {
     @Query("UPDATE tasks SET isPinned = :pinned WHERE id = :id")
     suspend fun setPinned(id: Long, pinned: Boolean)
 
-    /** 移动到目标区时同时刷新排序时间，使该胶囊排到末尾 */
-    @Query("UPDATE tasks SET isPinned = :pinned, createdAt = :now WHERE id = :id")
-    suspend fun setPinnedAt(id: Long, pinned: Boolean, now: Long)
+    /** 拖入上区：刷新排序时间，并累计一次使用次数 */
+    @Query("UPDATE tasks SET isPinned = 1, createdAt = :now, useCount = useCount + 1 WHERE id = :id")
+    suspend fun moveToNow(id: Long, now: Long)
+
+    /** 拖回下区：仅刷新排序时间 */
+    @Query("UPDATE tasks SET isPinned = 0, createdAt = :now WHERE id = :id")
+    suspend fun moveToPool(id: Long, now: Long)
 
     @Delete
     suspend fun delete(task: Task)

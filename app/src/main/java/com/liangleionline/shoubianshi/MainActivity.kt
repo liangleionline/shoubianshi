@@ -231,7 +231,7 @@ class MainActivity : AppCompatActivity() {
         flySrcY = srcPos[1] + v.height / 2f
         flyTargetId = id
 
-        // 幽灵覆盖源胶囊作为起点，源胶囊隐藏
+        // 幽灵副本
         val ghost = layoutInflater.inflate(R.layout.item_task, binding.root, false) as TextView
         val src = v as TextView
         ghost.text = src.text
@@ -243,11 +243,13 @@ class MainActivity : AppCompatActivity() {
         val spec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
         ghost.measure(spec, spec)
         ghost.layout(0, 0, ghost.measuredWidth, ghost.measuredHeight)
+        binding.root.addView(ghost)
+
+        // addView 完成后再设位移：幽灵中心与源胶囊中心重合（精确从原位置起飞）
         val rootOffset = IntArray(2)
         binding.root.getLocationOnScreen(rootOffset)
-        ghost.x = (srcPos[0] - rootOffset[0]).toFloat()
-        ghost.y = (srcPos[1] - rootOffset[1]).toFloat()
-        binding.root.addView(ghost)
+        ghost.translationX = flySrcX - rootOffset[0] - ghost.width / 2f
+        ghost.translationY = flySrcY - rootOffset[1] - ghost.height / 2f
         flyGhost = ghost
 
         v.visibility = View.INVISIBLE
@@ -256,17 +258,19 @@ class MainActivity : AppCompatActivity() {
         if (fromNow) vm.moveToPool(id) else vm.moveToNow(id)
     }
 
-    /** 目标区渲染出飞行胶囊后：等布局完成拿到真实落点，驱动幽灵从源位置直接飞过去 */
+    /** 目标区渲染出飞行胶囊后：等布局完成拿到真实落点，驱动幽灵从原位置直接飞过去 */
     private fun startFlyTo(tag: View) {
         val ghost = flyGhost ?: return
         tag.post {
             val pos = IntArray(2)
             tag.getLocationOnScreen(pos)
-            val tx = pos[0] + tag.width / 2f - flySrcX
-            val ty = pos[1] + tag.height / 2f - flySrcY
+            val targetCX = pos[0] + tag.width / 2f
+            val targetCY = pos[1] + tag.height / 2f
+            val dx = targetCX - flySrcX
+            val dy = targetCY - flySrcY
             ghost.animate()
-                .translationXBy(tx)
-                .translationYBy(ty)
+                .translationXBy(dx)
+                .translationYBy(dy)
                 .scaleX(0.55f)
                 .scaleY(0.55f)
                 .alpha(0.2f)
