@@ -227,51 +227,53 @@ class MainActivity : AppCompatActivity() {
     private fun onTagTap(v: View, id: Long, fromNow: Boolean) {
         flyTargetId = id
 
-        // 幽灵副本：完全复用拖拽已验证的定位机制（addView 后 measure/layout，再用 setX/setY 定位）
-        val ghost = layoutInflater.inflate(R.layout.item_task, binding.root, false) as TextView
-        val src = v as TextView
-        ghost.text = src.text
-        ghost.background = src.background
-        ghost.setTextColor(src.currentTextColor)
-        ghost.alpha = 1f
-        ghost.elevation = 12f
-        ghost.isClickable = false
-        binding.root.addView(ghost)
-        val spec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-        ghost.measure(spec, spec)
-        ghost.layout(0, 0, ghost.measuredWidth, ghost.measuredHeight)
-        flyGhost = ghost
-
-        v.visibility = View.INVISIBLE
-
-        // 起飞点 = 胶囊自身当前位置的中心（屏幕坐标），与点击坐标无关
+        // 起飞点 = 胶囊自身当前所在的位置（左上角，root 坐标），与点击坐标无关。
+        // 这里只记录起飞点；幽灵在开飞那一刻（startFlyTo 的 post）才创建，从出现起就在胶囊位置
         val srcPos = IntArray(2)
         v.getLocationOnScreen(srcPos)
-        flySrcX = srcPos[0] + v.width / 2f
-        flySrcY = srcPos[1] + v.height / 2f
-        positionGhost(ghost, flySrcX, flySrcY)
+        val rootOffset = IntArray(2)
+        binding.root.getLocationOnScreen(rootOffset)
+        flySrcX = (srcPos[0] - rootOffset[0]).toFloat()
+        flySrcY = (srcPos[1] - rootOffset[1]).toFloat()
+
+        v.visibility = View.INVISIBLE
 
         // 先移动数据，触发目标区重渲染；fillZone 会在渲染出该胶囊后接管飞行终点
         if (fromNow) vm.moveToPool(id) else vm.moveToNow(id)
     }
 
-    /** 目标区渲染出飞行胶囊后：等布局完成拿到真实落点，驱动幽灵从源位置直接飞过去 */
+    /** 目标区渲染出飞行胶囊后：等布局完成才创建幽灵，从胶囊当前位置（绝对坐标）直线飞向落点 */
     private fun startFlyTo(tag: View) {
-        val ghost = flyGhost ?: return
         tag.post {
-            // 开飞前把幽灵重新锁到源胶囊中心（复用拖拽机制），防止移动数据期间根布局重置位移
-            positionGhost(ghost, flySrcX, flySrcY)
+            // 此刻才创建幽灵：它从出现起就被绝对定位到胶囊当前位置，不存在任何中间帧
+            val ghost = layoutInflater.inflate(R.layout.item_task, binding.root, false) as TextView
+            val t = tag as TextView
+            ghost.text = t.text
+            ghost.background = t.background
+            ghost.setTextColor(t.currentTextColor)
             ghost.alpha = 1f
-            ghost.scaleX = 1f
-            ghost.scaleY = 1f
-            // 落点：目标胶囊中心（屏幕坐标），按中心差量直线飞过去
+            ghost.elevation = 12f
+            ghost.isClickable = false
+            val spec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            binding.root.addView(ghost)
+            ghost.measure(spec, spec)
+            ghost.layout(0, 0, ghost.measuredWidth, ghost.measuredHeight)
+            // 用绝对坐标 setX/setY 把幽灵放到胶囊当前位置（左上角对齐）
+            ghost.x = flySrcX
+            ghost.y = flySrcY
+            flyGhost = ghost
+
+            // 落点：目标胶囊左上角（root 坐标），用绝对动画 x/y 直线飞过去
             val pos = IntArray(2)
             tag.getLocationOnScreen(pos)
-            val dx = (pos[0] + tag.width / 2f) - flySrcX
-            val dy = (pos[1] + tag.height / 2f) - flySrcY
+            val rootOffset = IntArray(2)
+            binding.root.getLocationOnScreen(rootOffset)
+            val targetX = (pos[0] - rootOffset[0]).toFloat()
+            val targetY = (pos[1] - rootOffset[1]).toFloat()
+
             ghost.animate()
-                .translationXBy(dx)
-                .translationYBy(dy)
+                .x(targetX)
+                .y(targetY)
                 .scaleX(0.55f)
                 .scaleY(0.55f)
                 .alpha(0.2f)
