@@ -224,11 +224,14 @@ class MainActivity : AppCompatActivity() {
     // ---------------- 单击：胶囊飞向目标区域 ----------------
 
     private fun onTagTap(v: View, id: Long, fromNow: Boolean) {
-        // 记录源胶囊中心（屏幕坐标）
+        // 记录源胶囊左上角（root 坐标）。不依赖胶囊/幽灵尺寸，幽灵左上角与源胶囊左上角完全重合，
+        // 保证起点 100% 贴合胶囊原本位置
         val srcPos = IntArray(2)
         v.getLocationOnScreen(srcPos)
-        flySrcX = srcPos[0] + v.width / 2f
-        flySrcY = srcPos[1] + v.height / 2f
+        val rootOffset = IntArray(2)
+        binding.root.getLocationOnScreen(rootOffset)
+        flySrcX = (srcPos[0] - rootOffset[0]).toFloat()
+        flySrcY = (srcPos[1] - rootOffset[1]).toFloat()
         flyTargetId = id
 
         // 幽灵副本
@@ -245,11 +248,9 @@ class MainActivity : AppCompatActivity() {
         ghost.layout(0, 0, ghost.measuredWidth, ghost.measuredHeight)
         binding.root.addView(ghost)
 
-        // addView 完成后再设位移：幽灵中心与源胶囊中心重合（精确从原位置起飞）
-        val rootOffset = IntArray(2)
-        binding.root.getLocationOnScreen(rootOffset)
-        ghost.translationX = flySrcX - rootOffset[0] - ghost.width / 2f
-        ghost.translationY = flySrcY - rootOffset[1] - ghost.height / 2f
+        // addView 完成后再设位移：幽灵左上角 = 源胶囊左上角
+        ghost.translationX = flySrcX
+        ghost.translationY = flySrcY
         flyGhost = ghost
 
         v.visibility = View.INVISIBLE
@@ -264,17 +265,17 @@ class MainActivity : AppCompatActivity() {
         tag.post {
             val rootOffset = IntArray(2)
             binding.root.getLocationOnScreen(rootOffset)
-            // 重新断言幽灵起点 = 源胶囊中心（此时根已布局完，ghost.width 为真实宽度；
-            // 防止移动数据期间素材库重排触发根布局、把位移重置/算偏，导致起点偏移）
-            ghost.translationX = flySrcX - rootOffset[0] - ghost.width / 2f
-            ghost.translationY = flySrcY - rootOffset[1] - ghost.height / 2f
+            // 重新断言幽灵左上角 = 源胶囊左上角（防止移动数据期间根布局重置位移导致起点偏移）
+            ghost.translationX = flySrcX
+            ghost.translationY = flySrcY
             ghost.alpha = 1f
             ghost.scaleX = 1f
             ghost.scaleY = 1f
+            // 落点：目标胶囊左上角（root 坐标），幽灵按左上角差量直线飞过去
             val pos = IntArray(2)
             tag.getLocationOnScreen(pos)
-            val dx = (pos[0] + tag.width / 2f) - flySrcX
-            val dy = (pos[1] + tag.height / 2f) - flySrcY
+            val dx = (pos[0] - rootOffset[0]).toFloat() - flySrcX
+            val dy = (pos[1] - rootOffset[1]).toFloat() - flySrcY
             ghost.animate()
                 .translationXBy(dx)
                 .translationYBy(dy)
