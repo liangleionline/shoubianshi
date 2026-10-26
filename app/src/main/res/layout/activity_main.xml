@@ -67,29 +67,43 @@
                 android:textSize="13sp"
                 android:textStyle="bold" />
 
-            <com.liangleionline.shoubianshi.FlowLayout
-                android:id="@+id/nowFlow"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
-
-            <TextView
-                android:id="@+id/nowEmpty"
+            <ScrollView
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
-                android:gravity="center"
-                android:text="@string/zone_now_empty"
-                android:textColor="@color/text_tertiary"
-                android:textSize="14sp"
-                android:visibility="gone" />
+                android:fillViewport="true"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <com.liangleionline.shoubianshi.FlowLayout
+                        android:id="@+id/nowFlow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        android:id="@+id/nowEmpty"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:paddingTop="40dp"
+                        android:text="@string/zone_now_empty"
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="14sp"
+                        android:visibility="gone" />
+                </LinearLayout>
+            </ScrollView>
         </LinearLayout>
 
-        <!-- 下方：全部事项区（拖放目标） -->
+        <!-- 下方：全部事项区（拖放目标），占 2/3 -->
         <LinearLayout
             android:id="@+id/zonePool"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_weight="2"
             android:layout_marginStart="12dp"
             android:layout_marginEnd="12dp"
             android:layout_marginTop="6dp"
@@ -108,21 +122,35 @@
                 android:textSize="13sp"
                 android:textStyle="bold" />
 
-            <com.liangleionline.shoubianshi.FlowLayout
-                android:id="@+id/poolFlow"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
-
-            <TextView
-                android:id="@+id/poolEmpty"
+            <ScrollView
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
-                android:gravity="center"
-                android:text="@string/zone_pool_empty"
-                android:textColor="@color/text_tertiary"
-                android:textSize="14sp"
-                android:visibility="gone" />
+                android:fillViewport="true"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <com.liangleionline.shoubianshi.FlowLayout
+                        android:id="@+id/poolFlow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                    <TextView
+                        android:id="@+id/poolEmpty"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:paddingTop="40dp"
+                        android:text="@string/zone_pool_empty"
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="14sp"
+                        android:visibility="gone" />
+                </LinearLayout>
+            </ScrollView>
         </LinearLayout>
     </LinearLayout>
 

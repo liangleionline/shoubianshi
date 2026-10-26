@@ -28,6 +28,14 @@ class MainActivity : AppCompatActivity() {
     private var flyGhost: TextView? = null
     private var flyTargetId = 0L
 
+    /** 飞行进行中：抑制源区重排，让后边的胶囊在动画结束后再补位 */
+    private var flyInProgress = false
+    /** 源区是否是上区（true=上区，false=下区，null=无飞行） */
+    private var flySourceIsNow: Boolean? = null
+    /** 飞行期间源区的最新数据，动画结束后据此补位 */
+    private var pendingNow: List<Task>? = null
+    private var pendingPool: List<Task>? = null
+
     /** 胶囊配色（浅色背景 / 同色系深色文字），按事项 id 稳定分配 */
     private val capsulePalette = listOf(
         R.color.capsule_blue_bg to R.color.capsule_blue_text,
@@ -102,6 +110,10 @@ class MainActivity : AppCompatActivity() {
 
         v.visibility = View.INVISIBLE
 
+        // 标记飞行进行中：源区先不补位，等飞行动画结束后再补位
+        flyInProgress = true
+        flySourceIsNow = fromNow
+
         // 先移动数据，触发目标区重渲染；fillZone 会在渲染出该胶囊后接管飞行终点
         if (fromNow) vm.moveToPool(id) else vm.moveToNow(id)
     }
@@ -150,6 +162,21 @@ class MainActivity : AppCompatActivity() {
                     flyGhost = null
                     flyTargetId = 0L
                     tag.visibility = View.VISIBLE
+                    // 动画结束：源区此时才补位
+                    flyInProgress = false
+                    val srcNow = flySourceIsNow
+                    flySourceIsNow = null
+                    if (srcNow == true) {
+                        pendingNow?.let {
+                            fillZone(binding.nowFlow, binding.nowEmpty, it, fromNow = true)
+                            pendingNow = null
+                        }
+                    } else if (srcNow == false) {
+                        pendingPool?.let {
+                            fillZone(binding.poolFlow, binding.poolEmpty, it, fromNow = false)
+                            pendingPool = null
+                        }
+                    }
                 }
                 .start()
         }
@@ -162,12 +189,16 @@ class MainActivity : AppCompatActivity() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     vm.nowTasks.collect { list ->
-                        fillZone(binding.nowFlow, binding.nowEmpty, list, fromNow = true)
+                        // 飞行中且源区为上区：先暂存，动画结束后再补位
+                        if (flyInProgress && flySourceIsNow == true) pendingNow = list
+                        else fillZone(binding.nowFlow, binding.nowEmpty, list, fromNow = true)
                     }
                 }
                 launch {
                     vm.poolTasks.collect { list ->
-                        fillZone(binding.poolFlow, binding.poolEmpty, list, fromNow = false)
+                        // 飞行中且源区为下区：先暂存，动画结束后再补位
+                        if (flyInProgress && flySourceIsNow == false) pendingPool = list
+                        else fillZone(binding.poolFlow, binding.poolEmpty, list, fromNow = false)
                     }
                 }
             }
