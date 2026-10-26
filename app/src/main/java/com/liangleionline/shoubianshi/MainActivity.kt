@@ -227,14 +227,15 @@ class MainActivity : AppCompatActivity() {
     private fun onTagTap(v: View, id: Long, fromNow: Boolean) {
         flyTargetId = id
 
-        // 起飞点 = 胶囊自身当前所在的位置（左上角，root 坐标），与点击坐标无关。
-        // 这里只记录起飞点；幽灵在开飞那一刻（startFlyTo 的 post）才创建，从出现起就在胶囊位置
+        // 起飞点 = 胶囊自身当前所在的位置，与点击坐标无关。
+        // 注意：root 有 fitsSystemWindows，会被系统加上顶部 padding，幽灵作为 root 的子 view
+        // 布局时会再叠加一次该 padding，因此这里把 padding 一并扣掉，确保 ghost 落点 = 胶囊位置。
         val srcPos = IntArray(2)
         v.getLocationOnScreen(srcPos)
         val rootOffset = IntArray(2)
         binding.root.getLocationOnScreen(rootOffset)
-        flySrcX = (srcPos[0] - rootOffset[0]).toFloat()
-        flySrcY = (srcPos[1] - rootOffset[1]).toFloat()
+        flySrcX = (srcPos[0] - rootOffset[0] - binding.root.paddingLeft).toFloat()
+        flySrcY = (srcPos[1] - rootOffset[1] - binding.root.paddingTop).toFloat()
 
         v.visibility = View.INVISIBLE
 
@@ -242,10 +243,10 @@ class MainActivity : AppCompatActivity() {
         if (fromNow) vm.moveToPool(id) else vm.moveToNow(id)
     }
 
-    /** 目标区渲染出飞行胶囊后：等布局完成才创建幽灵，从胶囊当前位置（绝对坐标）直线飞向落点 */
+    /** 目标区渲染出飞行胶囊后：等布局完成才创建幽灵，从胶囊当前位置直线飞向落点 */
     private fun startFlyTo(tag: View) {
         tag.post {
-            // 此刻才创建幽灵：它从出现起就被绝对定位到胶囊当前位置，不存在任何中间帧
+            // 此刻才创建幽灵：用 LayoutParams margin 布局定位（布局位置 = 胶囊位置），不存在中间帧
             val ghost = layoutInflater.inflate(R.layout.item_task, binding.root, false) as TextView
             val t = tag as TextView
             ghost.text = t.text
@@ -255,25 +256,28 @@ class MainActivity : AppCompatActivity() {
             ghost.elevation = 12f
             ghost.isClickable = false
             val spec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-            binding.root.addView(ghost)
             ghost.measure(spec, spec)
             ghost.layout(0, 0, ghost.measuredWidth, ghost.measuredHeight)
-            // 用绝对坐标 setX/setY 把幽灵放到胶囊当前位置（左上角对齐）
-            ghost.x = flySrcX
-            ghost.y = flySrcY
+            // 用 margin 定位：FrameLayout 布局 child = padding + margin，这里 margin 已含 padding 补偿
+            val lp = FrameLayout.LayoutParams(ghost.measuredWidth, ghost.measuredHeight)
+            lp.leftMargin = flySrcX.toInt()
+            lp.topMargin = flySrcY.toInt()
+            binding.root.addView(ghost, lp)
             flyGhost = ghost
 
-            // 落点：目标胶囊左上角（root 坐标），用绝对动画 x/y 直线飞过去
+            // 落点：目标胶囊位置（同样扣掉 root padding，保持同一坐标系）
             val pos = IntArray(2)
             tag.getLocationOnScreen(pos)
             val rootOffset = IntArray(2)
             binding.root.getLocationOnScreen(rootOffset)
-            val targetX = (pos[0] - rootOffset[0]).toFloat()
-            val targetY = (pos[1] - rootOffset[1]).toFloat()
+            val targetX = (pos[0] - rootOffset[0] - binding.root.paddingLeft).toFloat()
+            val targetY = (pos[1] - rootOffset[1] - binding.root.paddingTop).toFloat()
 
+            val dx = targetX - flySrcX
+            val dy = targetY - flySrcY
             ghost.animate()
-                .x(targetX)
-                .y(targetY)
+                .translationXBy(dx)
+                .translationYBy(dy)
                 .scaleX(0.55f)
                 .scaleY(0.55f)
                 .alpha(0.2f)
