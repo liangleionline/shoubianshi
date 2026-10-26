@@ -8,7 +8,6 @@
     <!-- 背景 -->
     <color name="bg_page">#F5F6FA</color>
     <color name="bg_now_zone">#EFF3FC</color>
-    <color name="bg_pool_zone">#F5F6FA</color>
     <color name="card">#FFFFFF</color>
 
     <!-- 文字 -->
@@ -17,7 +16,6 @@
     <color name="text_tertiary">#B6BBC8</color>
 
     <!-- 语义 -->
-    <color name="success">#2FB56C</color>
     <color name="danger">#E5484D</color>
     <color name="divider">#ECEEF4</color>
 
