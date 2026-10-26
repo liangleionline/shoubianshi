@@ -8,6 +8,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -224,8 +225,8 @@ class MainActivity : AppCompatActivity() {
     // ---------------- 单击：胶囊飞向目标区域 ----------------
 
     private fun onTagTap(v: View, id: Long, fromNow: Boolean) {
-        // 记录源胶囊左上角（root 坐标）。不依赖胶囊/幽灵尺寸，幽灵左上角与源胶囊左上角完全重合，
-        // 保证起点 100% 贴合胶囊原本位置
+        // 起飞点 = 胶囊自身当前所在的位置（左上角，root 坐标），与点击坐标无关。
+        // 点击只是标记哪个胶囊要起飞。
         val srcPos = IntArray(2)
         v.getLocationOnScreen(srcPos)
         val rootOffset = IntArray(2)
@@ -245,12 +246,13 @@ class MainActivity : AppCompatActivity() {
         ghost.isClickable = false
         val spec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
         ghost.measure(spec, spec)
-        ghost.layout(0, 0, ghost.measuredWidth, ghost.measuredHeight)
-        binding.root.addView(ghost)
 
-        // addView 完成后再设位移：幽灵左上角 = 源胶囊左上角
-        ghost.translationX = flySrcX
-        ghost.translationY = flySrcY
+        // 用 LayoutParams 的 margin 把幽灵的基准位置直接固定在胶囊当前位置：
+        // 布局时即精确贴合，杜绝"基准在根原点、靠 translation 定位被布局重置"导致的首帧跳变
+        val lp = FrameLayout.LayoutParams(ghost.measuredWidth, ghost.measuredHeight)
+        lp.leftMargin = flySrcX.toInt()
+        lp.topMargin = flySrcY.toInt()
+        binding.root.addView(ghost, lp)
         flyGhost = ghost
 
         v.visibility = View.INVISIBLE
@@ -263,15 +265,15 @@ class MainActivity : AppCompatActivity() {
     private fun startFlyTo(tag: View) {
         val ghost = flyGhost ?: return
         tag.post {
-            val rootOffset = IntArray(2)
-            binding.root.getLocationOnScreen(rootOffset)
-            // 重新断言幽灵左上角 = 源胶囊左上角（防止移动数据期间根布局重置位移导致起点偏移）
-            ghost.translationX = flySrcX
-            ghost.translationY = flySrcY
+            // 幽灵基准已固定在源胶囊位置，translation 从 0 起，动画直接由源位置飞向落点
+            ghost.translationX = 0f
+            ghost.translationY = 0f
             ghost.alpha = 1f
             ghost.scaleX = 1f
             ghost.scaleY = 1f
-            // 落点：目标胶囊左上角（root 坐标），幽灵按左上角差量直线飞过去
+            val rootOffset = IntArray(2)
+            binding.root.getLocationOnScreen(rootOffset)
+            // 落点：目标胶囊左上角（root 坐标），按左上角差量直线飞过去
             val pos = IntArray(2)
             tag.getLocationOnScreen(pos)
             val dx = (pos[0] - rootOffset[0]).toFloat() - flySrcX
