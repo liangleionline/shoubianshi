@@ -235,29 +235,20 @@ class MainActivity : AppCompatActivity() {
         flySrcY = (srcPos[1] - rootOffset[1]).toFloat()
         flyTargetId = id
 
-        // 幽灵副本
-        val ghost = layoutInflater.inflate(R.layout.item_task, binding.root, false) as TextView
-        val src = v as TextView
-        ghost.text = src.text
-        ghost.background = src.background
-        ghost.setTextColor(src.currentTextColor)
-        ghost.alpha = 1f
-        ghost.elevation = 12f
-        ghost.isClickable = false
-        val spec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-        ghost.measure(spec, spec)
-
-        // 用 LayoutParams 的 margin 把幽灵的基准位置直接固定在胶囊当前位置：
-        // 布局时即精确贴合，杜绝"基准在根原点、靠 translation 定位被布局重置"导致的首帧跳变
-        val lp = FrameLayout.LayoutParams(ghost.measuredWidth, ghost.measuredHeight)
+        // 直接把这个胶囊自身从素材库取出、挂到根浮层，作为起飞对象。
+        // 它仍保留自己的尺寸与当前布局位置，从它原本所在处精确起飞，
+        // 彻底避免"inflate 副本 + 手动测量 + 布局重置"带来的首帧位移偏差。
+        val ghost = v as TextView
+        (v.parent as? ViewGroup)?.removeView(v)
+        val lp = FrameLayout.LayoutParams(v.width, v.height)
         lp.leftMargin = flySrcX.toInt()
         lp.topMargin = flySrcY.toInt()
         binding.root.addView(ghost, lp)
+        ghost.isClickable = false
         flyGhost = ghost
 
-        v.visibility = View.INVISIBLE
-
-        // 先移动数据，触发目标区重渲染；fillZone 会在渲染出该胶囊后接管飞行终点
+        // 源区已移走该胶囊；移动数据触发源区/目标区重渲染，
+        // 目标区渲染出真实胶囊后接管飞行终点
         if (fromNow) vm.moveToPool(id) else vm.moveToNow(id)
     }
 
