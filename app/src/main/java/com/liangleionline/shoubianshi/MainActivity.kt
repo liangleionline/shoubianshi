@@ -225,30 +225,33 @@ class MainActivity : AppCompatActivity() {
     // ---------------- 单击：胶囊飞向目标区域 ----------------
 
     private fun onTagTap(v: View, id: Long, fromNow: Boolean) {
-        // 起飞点 = 胶囊自身当前所在的位置（左上角，root 坐标），与点击坐标无关。
-        // 点击只是标记哪个胶囊要起飞。
-        val srcPos = IntArray(2)
-        v.getLocationOnScreen(srcPos)
-        val rootOffset = IntArray(2)
-        binding.root.getLocationOnScreen(rootOffset)
-        flySrcX = (srcPos[0] - rootOffset[0]).toFloat()
-        flySrcY = (srcPos[1] - rootOffset[1]).toFloat()
         flyTargetId = id
 
-        // 直接把这个胶囊自身从素材库取出、挂到根浮层，作为起飞对象。
-        // 它仍保留自己的尺寸与当前布局位置，从它原本所在处精确起飞，
-        // 彻底避免"inflate 副本 + 手动测量 + 布局重置"带来的首帧位移偏差。
-        val ghost = v as TextView
-        (v.parent as? ViewGroup)?.removeView(v)
-        val lp = FrameLayout.LayoutParams(v.width, v.height)
-        lp.leftMargin = flySrcX.toInt()
-        lp.topMargin = flySrcY.toInt()
-        binding.root.addView(ghost, lp)
+        // 幽灵副本：完全复用拖拽已验证的定位机制（addView 后 measure/layout，再用 setX/setY 定位）
+        val ghost = layoutInflater.inflate(R.layout.item_task, binding.root, false) as TextView
+        val src = v as TextView
+        ghost.text = src.text
+        ghost.background = src.background
+        ghost.setTextColor(src.currentTextColor)
+        ghost.alpha = 1f
+        ghost.elevation = 12f
         ghost.isClickable = false
+        binding.root.addView(ghost)
+        val spec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        ghost.measure(spec, spec)
+        ghost.layout(0, 0, ghost.measuredWidth, ghost.measuredHeight)
         flyGhost = ghost
 
-        // 源区已移走该胶囊；移动数据触发源区/目标区重渲染，
-        // 目标区渲染出真实胶囊后接管飞行终点
+        v.visibility = View.INVISIBLE
+
+        // 起飞点 = 胶囊自身当前位置的中心（屏幕坐标），与点击坐标无关
+        val srcPos = IntArray(2)
+        v.getLocationOnScreen(srcPos)
+        flySrcX = srcPos[0] + v.width / 2f
+        flySrcY = srcPos[1] + v.height / 2f
+        positionGhost(ghost, flySrcX, flySrcY)
+
+        // 先移动数据，触发目标区重渲染；fillZone 会在渲染出该胶囊后接管飞行终点
         if (fromNow) vm.moveToPool(id) else vm.moveToNow(id)
     }
 
@@ -256,19 +259,16 @@ class MainActivity : AppCompatActivity() {
     private fun startFlyTo(tag: View) {
         val ghost = flyGhost ?: return
         tag.post {
-            // 幽灵基准已固定在源胶囊位置，translation 从 0 起，动画直接由源位置飞向落点
-            ghost.translationX = 0f
-            ghost.translationY = 0f
+            // 开飞前把幽灵重新锁到源胶囊中心（复用拖拽机制），防止移动数据期间根布局重置位移
+            positionGhost(ghost, flySrcX, flySrcY)
             ghost.alpha = 1f
             ghost.scaleX = 1f
             ghost.scaleY = 1f
-            val rootOffset = IntArray(2)
-            binding.root.getLocationOnScreen(rootOffset)
-            // 落点：目标胶囊左上角（root 坐标），按左上角差量直线飞过去
+            // 落点：目标胶囊中心（屏幕坐标），按中心差量直线飞过去
             val pos = IntArray(2)
             tag.getLocationOnScreen(pos)
-            val dx = (pos[0] - rootOffset[0]).toFloat() - flySrcX
-            val dy = (pos[1] - rootOffset[1]).toFloat() - flySrcY
+            val dx = (pos[0] + tag.width / 2f) - flySrcX
+            val dy = (pos[1] + tag.height / 2f) - flySrcY
             ghost.animate()
                 .translationXBy(dx)
                 .translationYBy(dy)
