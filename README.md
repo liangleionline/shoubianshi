@@ -63,6 +63,7 @@ https://github.com/liangleionline/shoubianshi/releases/latest/download/shoubians
 - Room 2.6.1（KSP）本地持久化，含 1→2 升级迁移
 - Material3 主题（仅取主题与控件样式），自主设计的低饱和静谧蓝视觉
 - 单击飞行动画：幽灵视图挂在根布局，直线飞向目标胶囊真实落点
+- 构建链：AGP 8.7.3 + Gradle 8.14（wrapper）+ jvmTarget 17；release 开启 minify 与资源压缩，沿用 debug 签名以保证覆盖升级保留数据
 
 ## 构建
 
