@@ -36,6 +36,14 @@
 https://github.com/liangleionline/shoubianshi/releases/latest/download/shoubianshi-v1.4.1.apk
 ```
 
+发布策略：仓库保留**最近 3 个版本**的安装包，更早的版本在发新版时清理。
+
+| 版本 | 安装包 |
+| --- | --- |
+| v1.4.1（最新） | [shoubianshi-v1.4.1.apk](https://github.com/liangleionline/shoubianshi/releases/download/v1.4.1/shoubianshi-v1.4.1.apk) |
+| v1.4.0 | [shoubianshi-v1.4.0.apk](https://github.com/liangleionline/shoubianshi/releases/download/v1.4.0/shoubianshi-v1.4.0.apk) |
+| v1.3.1 | [shoubianshi-v1.3.1.apk](https://github.com/liangleionline/shoubianshi/releases/download/v1.3.1/shoubianshi-v1.3.1.apk) |
+
 - 系统要求：Android 8.0（API 26）及以上
 - 安装包为精简版 release（代码混淆 + 资源压缩，约 1.6 MB），使用 debug 签名，可覆盖升级并保留数据
 - 无需联网、无需账号，安装后即可使用
@@ -122,4 +130,4 @@ README 顶部徽章可直接反映仓库热度，无需额外后台：
 - v1.4.1：代码与资源清理（移除未使用样式、无引用颜色、废弃 DAO / ViewModel 方法与冗余属性），README 重写并加入统计徽章
 - v1.4.0：上下区域 1:2 布局、双区可滚动、飞行结束才补位
 - v1.3.1：移除拖拽只留单击，冗余清理并启用精简 release
-- v1.3.0 及更早：双分区交互与胶囊样式逐步成型（旧版本安装包已清理，仓库仅保留最新版）
+- v1.3.0 及更早：双分区交互与胶囊样式逐步成型（仓库保留最近 3 个版本的安装包，更早版本不再归档）
