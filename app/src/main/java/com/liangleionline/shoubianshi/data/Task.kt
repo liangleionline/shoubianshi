@@ -5,7 +5,7 @@ import androidx.room.PrimaryKey
 
 /**
  * 待办事项。
- * isPinned = true 表示该事项已拖入「接下来待办」区（上区）；
+ * isPinned = true 表示该事项已加入「接下来待办」区（上区）；
  * isPinned = false 表示该事项仍在「全部事项」素材库（下区）。
  */
 @Entity(tableName = "tasks")
@@ -14,6 +14,6 @@ data class Task(
     val title: String,
     val isPinned: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
-    /** 使用次数：每拖入一次「接下来待办」加 1，用于素材库按使用频率排序 */
+    /** 使用次数：每加入一次「接下来待办」加 1，用于素材库按使用频率排序 */
     val useCount: Int = 0
 )

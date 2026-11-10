@@ -25,7 +25,6 @@ class MainActivity : AppCompatActivity() {
     // ---------------- 单击飞行状态 ----------------
     private var flySrcX = 0f
     private var flySrcY = 0f
-    private var flyGhost: TextView? = null
     private var flyTargetId = 0L
 
     /** 飞行进行中：抑制源区重排，让后边的胶囊在动画结束后再补位 */
@@ -66,7 +65,6 @@ class MainActivity : AppCompatActivity() {
         for (task in tasks) {
             val tag = layoutInflater.inflate(R.layout.item_task, flow, false) as TextView
             tag.text = task.title
-            tag.isClickable = true
             // 上色：浅色胶囊底 + 同色系深色文字
             val (bgRes, textRes) = capsulePalette[(task.id % capsulePalette.size).toInt()]
             tag.setTextColor(ContextCompat.getColor(this, textRes))
@@ -138,7 +136,6 @@ class MainActivity : AppCompatActivity() {
             lp.leftMargin = flySrcX.toInt()
             lp.topMargin = flySrcY.toInt()
             binding.root.addView(ghost, lp)
-            flyGhost = ghost
 
             // 落点：目标胶囊位置（同样扣掉 root padding，保持同一坐标系）
             val pos = IntArray(2)
@@ -159,7 +156,6 @@ class MainActivity : AppCompatActivity() {
                 .setDuration(280)
                 .withEndAction {
                     binding.root.removeView(ghost)
-                    flyGhost = null
                     flyTargetId = 0L
                     tag.visibility = View.VISIBLE
                     // 动画结束：源区此时才补位

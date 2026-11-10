@@ -28,20 +28,14 @@ interface TaskDao {
     @Update
     suspend fun update(task: Task)
 
-    @Query("UPDATE tasks SET isPinned = :pinned WHERE id = :id")
-    suspend fun setPinned(id: Long, pinned: Boolean)
-
-    /** 拖入上区：刷新排序时间，并累计一次使用次数 */
+    /** 移入上区：刷新排序时间，并累计一次使用次数 */
     @Query("UPDATE tasks SET isPinned = 1, createdAt = :now, useCount = useCount + 1 WHERE id = :id")
     suspend fun moveToNow(id: Long, now: Long)
 
-    /** 拖回下区：仅刷新排序时间 */
+    /** 移回下区：仅刷新排序时间 */
     @Query("UPDATE tasks SET isPinned = 0, createdAt = :now WHERE id = :id")
     suspend fun moveToPool(id: Long, now: Long)
 
     @Delete
     suspend fun delete(task: Task)
-
-    @Query("DELETE FROM tasks WHERE id = :id")
-    suspend fun deleteById(id: Long)
 }

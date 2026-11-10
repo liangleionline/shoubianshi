@@ -32,23 +32,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         dao.update(task)
     }
 
-    /** 把事项拖入上区（加入待办），并排到末尾 */
+    /** 点击下区胶囊：加入上区待办，并排到末尾 */
     fun moveToNow(id: Long) = viewModelScope.launch(Dispatchers.IO) {
         dao.moveToNow(id, now = System.currentTimeMillis())
     }
 
-    /** 把事项拖回下区（取消待办），并排到末尾 */
+    /** 点击上区胶囊：撤回下区素材库，并排到末尾 */
     fun moveToPool(id: Long) = viewModelScope.launch(Dispatchers.IO) {
         dao.moveToPool(id, now = System.currentTimeMillis())
     }
 
-    /** 完成并删除 */
+    /** 删除事项 */
     fun delete(task: Task) = viewModelScope.launch(Dispatchers.IO) {
         dao.delete(task)
-    }
-
-    /** 拖入完成区：按 id 完成并删除 */
-    fun deleteById(id: Long) = viewModelScope.launch(Dispatchers.IO) {
-        dao.deleteById(id)
     }
 }

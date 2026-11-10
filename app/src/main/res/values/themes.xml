@@ -12,21 +12,4 @@
         <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
         <item name="colorControlActivated">@color/primary</item>
     </style>
-
-    <!-- 圆角输入框 -->
-    <style name="RoundedEditText" parent="Widget.Material3.TextInputLayout.OutlinedBox">
-        <item name="boxCornerRadiusTopStart">16dp</item>
-        <item name="boxCornerRadiusTopEnd">16dp</item>
-        <item name="boxCornerRadiusBottomStart">16dp</item>
-        <item name="boxCornerRadiusBottomEnd">16dp</item>
-        <item name="boxStrokeColor">@color/divider</item>
-        <item name="boxBackgroundColor">@color/card</item>
-    </style>
-
-    <!-- 主按钮 -->
-    <style name="PrimaryButton" parent="Widget.Material3.Button">
-        <item name="cornerRadius">16dp</item>
-        <item name="backgroundTint">@color/primary</item>
-        <item name="android:textColor">@color/on_primary</item>
-    </style>
 </resources>

@@ -17,7 +17,6 @@
 
     <!-- 语义 -->
     <color name="danger">#E5484D</color>
-    <color name="divider">#ECEEF4</color>
 
     <!-- 启动图标背景 -->
     <color name="ic_launcher_background">#4E7CF6</color>
