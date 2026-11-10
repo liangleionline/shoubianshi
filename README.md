@@ -15,7 +15,7 @@
 
 「手边事」是一个极简待办工具：平时把琐事存进「全部事项」素材库，需要安排接下来 1–2 小时做什么时，点一下胶囊，它就飞进上方「接下来待办」。做完的事点回去、或直接在管理页删掉，然后再安排下一件。
 
-## 截图与交互
+## 界面与交互
 
 首页是一整块屏幕，上下分两个区：
 
@@ -75,7 +75,7 @@ gradlew.bat assembleDebug
 ```
 
 - 产物：`app/build/outputs/apk/release/app-release.apk`、`app/build/outputs/apk/debug/app-debug.apk`
-- 环境：JDK 17+（建议 JDK 21）、compileSdk 35、minSdk 26、Gradle 8.14（wrapper 已内置）
+- 环境：编译目标 JDK 17，实测构建用 JDK 21；compileSdk / targetSdk 均为 35、minSdk 26、Gradle 8.14（wrapper 已内置）
 
 ## 目录结构
 
@@ -93,7 +93,7 @@ app/src/main/
 │       └── AppDatabase.kt   # Room 数据库与迁移
 ├── res/
 │   ├── layout/              # 首页、管理页、胶囊与列表项
-│   ├── drawable/            # 圆角卡片 / 输入框 / 区块背景等形状
+│   ├── drawable/            # bg_card / bg_input / bg_chip / bg_zone_now / bg_add 等形状与图标
 │   └── values/              # 配色、尺寸、文案、主题
 └── AndroidManifest.xml      # 无任何网络权限
 ```
@@ -119,6 +119,16 @@ README 顶部徽章可直接反映仓库热度，无需额外后台：
 
 想看单个安装包的下载明细，可在 Releases 页面展开对应资产的 `Downloads` 数字。
 
+## 发版与维护
+
+每次发新版固定执行以下动作，保证仓库说明与安装包始终一致：
+
+1. 版本号加 1（`app/build.gradle.kts` 的 `versionCode` / `versionName`），提交并推送 `main`
+2. 构建 release 包，以 `shoubianshi-v<版本>.apk` 命名，上传到与版本号同名 tag 的新 Release
+3. Release 只保留**最近 3 个版本**，第 4 个及更早的 Release 与 tag 一并删除，本地对应旧包同步清理
+4. 同步更新本 README 的「下载安装」版本号与下载表格、「版本记录」、「未完成需求清单」
+5. 同步更新仓库 About 描述，确保不残留已废弃的功能说法（例如早期的拖拽交互）
+
 ## 未完成需求清单
 
 截至 v1.4.1（versionCode 21），此前提出的需求已全部实现，没有未完成的开发项。
@@ -131,3 +141,5 @@ README 顶部徽章可直接反映仓库热度，无需额外后台：
 - v1.4.0：上下区域 1:2 布局、双区可滚动、飞行结束才补位
 - v1.3.1：移除拖拽只留单击，冗余清理并启用精简 release
 - v1.3.0 及更早：双分区交互与胶囊样式逐步成型（仓库保留最近 3 个版本的安装包，更早版本不再归档）
+
+> 注：v1.4.0 与 v1.3.1 的安装包按各自历史提交重新构建（versionCode、versionName 与签名与原发布一致），用于满足"保留最近 3 个版本"的策略；功能与当时发布版本相同。
